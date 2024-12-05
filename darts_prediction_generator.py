@@ -25,7 +25,11 @@ def create_and_fit_TiDEModel(ocr_list, covariates_list, input_chunk_length, outp
     model = TiDEModel(
         input_chunk_length=input_chunk_length,
         output_chunk_length=output_chunk_length,
-        n_epochs=1
+        n_epochs=1,
+        pl_trainer_kwargs={
+            "accelerator": "gpu",
+            "devices": [0]
+        }
     )
 
     return model.fit(series=ocr_list, past_covariates=covariates_list)
@@ -44,7 +48,11 @@ def create_and_fit_rnn_model(ocr_list, covariates_list, input_chunk_length, outp
         n_rnn_layers=7,
         dropout=0.1,
         optimizer_cls=optimizer,
-        optimizer_kwargs=optimizer_params
+        optimizer_kwargs=optimizer_params,
+        pl_trainer_kwargs={
+            "accelerator": "gpu",
+            "devices": [0]
+        }
     )
 
     return model.fit(series=ocr_list, past_covariates=covariates_list)
@@ -54,8 +62,13 @@ def create_and_fit_nbeats_model(ocr_list, covariates_list, input_chunk_length, o
     model = NBEATSModel(
         input_chunk_length=input_chunk_length,
         output_chunk_length=output_chunk_length,
-        n_epochs=50,
-        generic_architecture=True
+        n_epochs=1,
+        generic_architecture=True,
+        pl_trainer_kwargs={
+            "accelerator": "gpu",
+            "devices": [0]
+        }
+
     )
     return model.fit(series=ocr_list, past_covariates=covariates_list)
 
@@ -85,9 +98,10 @@ def predict_with_models(trained_models, n_predictions, input_series, covariates_
         print(f"Making predictions with {model_name}...")
         if covariates_list:
             predictions[model_name] = model.predict(n=n_predictions, series=input_series,
-                                                    past_covariates=covariates_list)
+                                                    past_covariates=covariates_list).values().reshape(-1)
+
         else:
-            predictions[model_name] = model.predict(n=n_predictions, series=input_series)
+            predictions[model_name] = model.predict(n=n_predictions, series=input_series).values().reshape(-1)
 
     return predictions
 

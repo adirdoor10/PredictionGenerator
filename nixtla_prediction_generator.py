@@ -10,14 +10,13 @@ from neuralforecast.models import NBEATS, RNN
 
 from normalization import reverse_normalize_data
 
-
 def create_and_fit_Lstm_model(df, input_chunk_length, output_chunk_length, exogenous_vars):
     model = (
         LSTM(
             h=output_chunk_length,
             input_size=input_chunk_length,
             hist_exog_list=exogenous_vars,
-            max_steps=1000,  # Increased training steps for more thorough optimization
+            max_steps=1,  # Increased training steps for more thorough optimization
             encoder_n_layers=2,
             encoder_hidden_size=128,
             context_size=10,
@@ -34,7 +33,7 @@ def create_and_fit_nbeats_model(df, input_chunk_length, output_chunk_length, exo
         NBEATS
         (input_size=input_chunk_length,
          h=output_chunk_length,
-         max_steps=100
+         max_steps=1,
          )
     )
     return model
@@ -46,7 +45,8 @@ def create_and_fit_Rnn(df, input_chunk_length, output_chunk_length, exogenous_va
         (input_size=input_chunk_length,
          h=output_chunk_length,
          hist_exog_list=exogenous_vars,
-         max_steps=100
+         max_steps=1,
+
          )
     )
     return model

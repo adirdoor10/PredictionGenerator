@@ -96,7 +96,7 @@ def reverse_normalize_data(normalized_dict, params, convert_to_numpy=False):
         else:
             denormalized_array = reverse_func(normalized_array, params)
             #denormalized_array = denormalized_array.values().to_list()
-            normalized_dict[key] = denormalized_array.values().tolist()
+            normalized_dict[key] = denormalized_array.tolist()
 
     return normalized_dict
 

@@ -10,9 +10,10 @@ from normalization import setup_and_normalize_data
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
+from torch import cuda
 
 app = Bottle()
-URL = "http://127.0.0.1:8082/set_dle_predictions/1/1"
+URL = "http://192.168.50.4:8082/set_dle_predictions/1/1"
 
 
 def create_combined_json_object(darts_prediction, nixtla_prediction):
@@ -20,10 +21,10 @@ def create_combined_json_object(darts_prediction, nixtla_prediction):
     return combined_predictions
 
 
-def run_prediction_task(models_list, session_id, pattern_id, callback_url, normalize_method='z-score'):
+def run_prediction_task(models_list, session_id, pattern_id, normalize_method='z-score'):
     models_list = None
     try:
-        url = f"http://127.0.0.1:8082/get_pattern_dle_data/{session_id}/{pattern_id}"
+        url = f"http://192.168.50.4:8082/get_pattern_dle_data/{session_id}/{pattern_id}"
         data_response = requests.get(url)
         if data_response.status_code == 200:
             data = data_response.json()
@@ -33,8 +34,11 @@ def run_prediction_task(models_list, session_id, pattern_id, callback_url, norma
         data = setup_and_normalize_data(data, normalize_method)
         darts_prediction = start_darts(data, models_list, session_id, pattern_id, normalize_method)
         nixtla_prediction = start_nixtla(data,models_list, session_id, pattern_id, normalize_method)
-        json_pred = json.dumps((create_combined_json_object(darts_prediction, nixtla_prediction)))
+        pred_dict = {"session_id" : int(session_id), "pattern_id" : int(pattern_id)}
+        pred_dict["predictions"] = create_combined_json_object(darts_prediction, nixtla_prediction)
+        json_pred = json.dumps(pred_dict)
         res = post_prediction(json_pred)
+        print(res)
         plot_model_predictions(darts_prediction, nixtla_prediction)
 
 
@@ -56,7 +60,7 @@ def plot_model_predictions(darts_prediction, nixtla_prediction):
 
     plt.legend()
     plt.grid(True)
-    plt.savefig("C:/Users/adird/Documents/plot.png")
+    plt.savefig("/home/adir-kairos/Pictures/plot.png")
 
 
 def post_prediction(body):
@@ -75,26 +79,24 @@ def post_prediction(body):
 @app.get('/start-task')
 def start_task():
     try:
-        # Extract parameters from GET request
         neural_networks = request.query.get("models_list", "").split(",")
         session_id = request.query.get("session_id")
         pattern_id = request.query.get("pattern_id")
-        callback_url = request.query.get("callback_url")
         normalize_method = request.query.get("normalize_method", "min-max")
 
-        if not neural_networks or not session_id or not pattern_id or not callback_url:
+        if not neural_networks or not session_id or not pattern_id:
             response.status = 400
             return {"error": "Missing required parameters"}
 
         # Start the background task
         task_thread = threading.Thread(
             target=run_prediction_task,
-            args=(neural_networks, session_id, pattern_id, callback_url)
+            args=(neural_networks, session_id, pattern_id)
         )
         task_thread.start()
 
         # Respond immediately that the task has started
-        return {"status": "Task started", "session_id": session_id, "pattern_id": pattern_id}
+        return {"status": "Task started", "fuckyou": session_id, "pattern_id": pattern_id}
     except Exception as e:
         response.status = 500
         return {"error": str(e)}
