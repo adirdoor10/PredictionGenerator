@@ -13,7 +13,6 @@ matplotlib.use('Agg')
 from torch import cuda
 
 app = Bottle()
-URL = "http://192.168.50.4:8082/set_dle_predictions/1/1"
 
 
 def create_combined_json_object(darts_prediction, nixtla_prediction):
@@ -21,10 +20,10 @@ def create_combined_json_object(darts_prediction, nixtla_prediction):
     return combined_predictions
 
 
-def run_prediction_task(models_list, session_id, pattern_id, normalize_method='z-score'):
+def run_prediction_task(host, models_list, session_id, pattern_id, normalize_method='z-score', quantile=1.0):
     models_list = None
     try:
-        url = f"http://192.168.50.4:8082/get_pattern_dle_data/{session_id}/{pattern_id}"
+        url = f"http://{host}:8082/get_pattern_dle_data/{session_id}/{pattern_id}/{quantile}"
         data_response = requests.get(url)
         if data_response.status_code == 200:
             data = data_response.json()
@@ -33,11 +32,13 @@ def run_prediction_task(models_list, session_id, pattern_id, normalize_method='z
 
         data = setup_and_normalize_data(data, normalize_method)
         darts_prediction = start_darts(data, models_list, session_id, pattern_id, normalize_method)
+
         nixtla_prediction = start_nixtla(data,models_list, session_id, pattern_id, normalize_method)
         pred_dict = {"session_id" : int(session_id), "pattern_id" : int(pattern_id)}
         pred_dict["predictions"] = create_combined_json_object(darts_prediction, nixtla_prediction)
+        pred_dict['real_response']= data['real_response']
         json_pred = json.dumps(pred_dict)
-        res = post_prediction(json_pred)
+        res = post_prediction(json_pred, host)
         print(res)
         plot_model_predictions(darts_prediction, nixtla_prediction)
 
@@ -63,9 +64,9 @@ def plot_model_predictions(darts_prediction, nixtla_prediction):
     plt.savefig("/home/adir-kairos/Pictures/plot.png")
 
 
-def post_prediction(body):
+def post_prediction(body, host):
     try:
-
+        URL = f"http://{host}:8082/set_dle_predictions/1/1"
         response = requests.post(URL, data=body, headers={"Content-Type": "application/json"})
         return {
             "status_code": response.status_code,
@@ -83,6 +84,8 @@ def start_task():
         session_id = request.query.get("session_id")
         pattern_id = request.query.get("pattern_id")
         normalize_method = request.query.get("normalize_method", "min-max")
+        quantile = request.query.get("quantile", "1.0")
+        host = request.remote_addr
 
         if not neural_networks or not session_id or not pattern_id:
             response.status = 400
@@ -91,7 +94,7 @@ def start_task():
         # Start the background task
         task_thread = threading.Thread(
             target=run_prediction_task,
-            args=(neural_networks, session_id, pattern_id)
+            args=(host, neural_networks, session_id, pattern_id,normalize_method, quantile)
         )
         task_thread.start()
 

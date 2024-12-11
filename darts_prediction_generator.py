@@ -15,7 +15,7 @@ import json
 from normalization import normalize_data, reverse_normalize_data, setup_and_normalize_data
 import torch
 
-
+#http://localhost:8000/start-task?models_list=None&session_id=1&pattern_id=1&normalize_method=min-max&quantile=1.0
 class EpochLossLogger(Callback):
     def on_train_epoch_end(self, trainer, pl_module):
         print(f"Epoch {trainer.current_epoch + 1} - Loss: {trainer.logged_metrics['train_loss']}")
@@ -171,7 +171,7 @@ def start_darts(data, models_list=None, session_id=1, pattern_id=1, normalize_me
     predictions = predict_with_models(models, output_chunk_length, head_data, stacked_covariates_head)
     market_response = data['real_response']
     pred = reverse_normalize_data(predictions, data['normalization params'][data['target_dim_name']])
-    pred['real response'] = data['real_response']
+    #pred['real_response'] = data['real_response']
     save_to_file(pred, 'denormalized_pred.json')
     print("finish")
     return pred
